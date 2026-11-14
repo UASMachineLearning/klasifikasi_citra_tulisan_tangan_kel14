@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Response
 
 from app.inference import load_model_bundle, predict_image
 
@@ -56,5 +57,10 @@ async def predict(file: UploadFile = File(...)):
     # Mengembalikan hasil prediksi
     return {
         "predicted_nim": result["predicted_nim"],
-        "confidence": result["confidence"]
+        "confidence": result["confidence"],
+        "probabilities": result["probabilities"]
     }
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
