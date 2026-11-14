@@ -47,7 +47,6 @@ def load_model_bundle() -> dict:
 
     return bundle
 
-
 # Melakukan prediksi identitas penulis
 def predict_image(image_bytes: bytes, bundle: dict) -> dict:
 
@@ -99,7 +98,20 @@ def predict_image(image_bytes: bytes, bundle: dict) -> dict:
     if not np.isfinite(confidence) or not 0 <= confidence <= 1:
         raise ValueError("Confidence tidak valid.")
 
+    # Probabilitas semua kelas
+    class_probabilities = dict(
+        sorted(
+            (
+                (str(cls), float(prob))
+                for cls, prob in zip(model_classes, probabilities)
+            ),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+    )
+
     return {
         "predicted_nim": str(predicted_nim),
-        "confidence": confidence
+        "confidence": confidence,
+        "probabilities": class_probabilities,
     }
