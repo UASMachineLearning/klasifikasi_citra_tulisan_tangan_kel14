@@ -79,7 +79,7 @@ def predict_image(image_bytes: bytes, bundle: dict) -> dict:
     predicted_nim = model.predict(feature_df)[0]
 
     # Mengambil probabilitas setiap kelas
-    probabilities = model.predict_proba(feature_df)[0]
+    confidence_row = model.predict_proba(feature_df)[0]
 
     # Mencari posisi kelas hasil prediksi
     model_classes = np.asarray(model.classes_)
@@ -93,17 +93,17 @@ def predict_image(image_bytes: bytes, bundle: dict) -> dict:
 
     # Mengambil confidence sesuai kelas predict()
     class_index = int(class_indices[0])
-    confidence = float(probabilities[class_index])
+    confidence = float(confidence_row[class_index])
 
     if not np.isfinite(confidence) or not 0 <= confidence <= 1:
         raise ValueError("Confidence tidak valid.")
 
     # Probabilitas semua kelas
-    class_probabilities = dict(
+    class_confidence_row = dict(
         sorted(
             (
                 (str(cls), float(prob))
-                for cls, prob in zip(model_classes, probabilities)
+                for cls, prob in zip(model_classes, confidence_row)
             ),
             key=lambda item: item[1],
             reverse=True,
@@ -113,5 +113,5 @@ def predict_image(image_bytes: bytes, bundle: dict) -> dict:
     return {
         "predicted_nim": str(predicted_nim),
         "confidence": confidence,
-        "probabilities": class_probabilities,
+        "confidence_row": class_confidence_row,
     }

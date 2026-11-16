@@ -13,39 +13,41 @@ CSV_PATH = Path(__file__).resolve().parent.parent / "data_mahasiswa.csv"
 NAMA = pd.read_csv(CSV_PATH, dtype=str).set_index("NIM")["name"].to_dict()
 
 def predict(file_bytes: bytes, filename: str, mime: str):
-    """Kirim gambar ke backend, kembalikan list (Nama, probabilitas) terurut dari tertinggi."""
     files = {"file": (filename, file_bytes, mime)}
     response = requests.post(API_URL, files=files, timeout=60)
     response.raise_for_status()
     data = response.json()
 
     # Hasil setelah prediksi
-    results = [(NAMA.get(nim, nim), prob) for nim, prob in data["probabilities"].items()]
-    return sorted(results, key=lambda x: x[1], reverse=True)[:5]
+    results = [(nim, NAMA.get(nim, nim), prob) for nim, prob in data["confidence_row"].items()]
+    return sorted(results, key=lambda x: x[2], reverse=True)[:5]
 
 # Komponen tampilan hasil prediksi
 def render_result(results):
-    top_name, top_prob = results[0]
+    top_nim, top_name, top_prob = results[0]
     st.markdown(
         '<div class="result-card">'
         f'<div class="avatar">{top_name[0].upper()}</div>'
         "<div>"
             '<div class="subbab-judul">Pemilik Tulisan</div>'
-            f'<div class="result-name">{top_name}</div>'
+            f'<div class="result-name">{top_name} - {top_nim}</div>'
             f'<span class="badge">Probability {top_prob * 100:.1f}%</span>'
         "</div>"
         "</div>",
         unsafe_allow_html=True,
     )
 
+    # menyimpan hasil untuk urutan confidence
     rows = []
-    for i, (name, prob) in enumerate(results):
+
+    # loop untuk menampilkan persentase confidence 
+    for i, (nim, name, prob) in enumerate(results):
         # bar dengan probability tertinggi
         fill = "bar-fill top" if i == 0 else "bar-fill"
         rows.append(
             '<div class="bar-row">'
                 '<div class="bar-label">'
-                    f'<span>{name}</span>'
+                    f'<span>{name} - {nim}</span>'
                     # persentase
                     f'<span>{prob * 100:.1f}%</span>'
                 '</div>'
@@ -58,7 +60,7 @@ def render_result(results):
 
     st.markdown(
         '<div class="bars">'
-            '<div class="subbab-judul" style="margin-bottom:.9rem">Probabilitas tertinggi</div>'
+            '<div class="subbab-judul" style="margin-bottom:.9rem">Tingkat Keyakinan Model</div>'
             + "".join(rows)
         + "</div>",
         unsafe_allow_html=True,
