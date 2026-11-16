@@ -58,7 +58,7 @@ async def predict(file: UploadFile = File(...)):
     return {
         "predicted_nim": result["predicted_nim"],
         "confidence": result["confidence"],
-        "probabilities": result["probabilities"]
+        "confidence_row": result["confidence_row"]
     }
 
 @app.get("/favicon.ico", include_in_schema=False)

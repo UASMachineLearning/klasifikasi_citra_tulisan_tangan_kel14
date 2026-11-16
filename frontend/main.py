@@ -241,6 +241,7 @@ button[data-testid="stExpandSidebarButton"]:hover {
     font-size: 2rem;
     color: #3B342C;
     line-height: 1.1;
+    font-weight: 600;
 }
 
 .badge {
