@@ -70,6 +70,117 @@ def render_result(results):
         unsafe_allow_html=True,
     )
 
+
+
+# Fungsi grafik 
+def render_confidence_chart(results):
+
+    # Membuat DataFrame untuk grafik
+    df_chart = pd.DataFrame({
+        "Nama": [name for nim, name, prob in results],
+        "NIM": [nim for nim, name, prob in results],
+        "Confidence": [float(prob) for nim, name, prob in results]
+    })
+
+    # Menggabungkan nama dan NIM 
+    df_chart["Label"] = df_chart["Nama"] + "|" + df_chart["NIM"]
+
+    # Container grafik
+    with st.container(key="confidence_chart"):
+
+        st.markdown(
+            '<div class="chart-title">Grafik Tingkat Keyakinan Model</div>',
+            unsafe_allow_html=True,
+        )
+
+        chart_spec = {
+            "mark": {
+                "type": "bar",
+                "color": "#7D1F1F",
+                "cornerRadiusEnd": 6
+            },
+            "encoding": {
+                "x": {
+                    "field": "Label",
+                    "type": "nominal",
+                    "sort": {
+                        "field": "Confidence",
+                        "order": "descending"
+                    },
+                    "axis": {
+                        "title": "Nama Mahasiswa / NIM",
+                        "labelExpr": "split(datum.label, '|')",
+                        "labelAngle": 0,
+                        "labelAlign": "center",
+                        "labelLimit": 180,
+                        "labelFontSize": 10,
+                        "titlePadding": 18
+                    }
+                },
+                "y": {
+                    "field": "Confidence",
+                    "type": "quantitative",
+                    "scale": {
+                        "zero": True
+                    },
+                    "axis": {
+                        "title": "Confidence (%)",
+                        "tickCount": 5,
+                        "titlePadding": 12,
+                        "format": ".0%"
+                    }
+                },
+                "tooltip": [
+                    {
+                        "field": "Nama",
+                        "type": "nominal",
+                        "title": "Nama Mahasiswa"
+                    },
+                    {
+                        "field": "NIM",
+                        "type": "nominal",
+                        "title": "NIM"
+                    },
+                    {
+                        "field": "Confidence",
+                        "type": "quantitative",
+                        "title": "Confidence",
+                        "format": ".1%"
+                    }
+                ]
+            },
+            "height": 360,
+            "autosize": {
+                "type": "fit",
+                "contains": "padding",
+                "resize": True
+            },
+            "config": {
+                "view": {
+                    "stroke": "transparent"
+                },
+                "axis": {
+                    "labelFont": "Plus Jakarta Sans",
+                    "titleFont": "Plus Jakarta Sans",
+                    "labelColor": "#5A4F43",
+                    "titleColor": "#7D1F1F",
+                    "gridColor": "#F1E5E5",
+                    "domainColor": "#D9C5C5",
+                    "tickColor": "#D9C5C5",
+                    "labelFontSize": 12,
+                    "titleFontSize": 13
+                }
+            }
+        }
+
+        # Menampilkan grafik
+        st.vega_lite_chart(
+            df_chart,
+            spec=chart_spec,
+            use_container_width=True
+        )
+
+
 def render_placeholder():
     st.markdown(
         '<div class="placeholder">'
@@ -87,9 +198,9 @@ st.markdown(
             "<p>Upload foto tulisan tanganmu, dan model akan memprediksi siapa pemiliknya</p>"
             
             '<div class="steps">'
-                '<span class="step"><b>1</b>Upload gambar</span>'
-                '<span class="step"><b>2</b>Klik tombol prediksi</span>'
-                '<span class="step"><b>3</b>Lihat hasilnya</span>'
+                '<span class="step">Upload gambar</span>'
+                '<span class="step">Klik tombol prediksi</span>'
+                '<span class="step">Lihat hasilnya</span>'
         "</div>"
     "</div>",
     unsafe_allow_html=True,
@@ -139,9 +250,24 @@ with left:
 
 # untuk kolom "right"
 with right:
-    st.markdown('<div class="panel-title-kolom">Hasil prediksi</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="panel-title-kolom">Hasil prediksi</div>',
+        unsafe_allow_html=True
+    )
+
     saved = st.session_state.get("result")
+
     if saved and saved[0] == file_key:
         render_result(saved[1])
     else:
         render_placeholder()
+
+
+# Nampilin grafik ditengah
+if saved and saved[0] == file_key:
+
+    # Membuat kolom kosong di kiri dan kanan
+    col_kiri, col_grafik, col_kanan = st.columns([1, 5, 1])
+
+    with col_grafik:
+        render_confidence_chart(saved[1])

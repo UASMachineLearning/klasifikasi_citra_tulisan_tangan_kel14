@@ -261,6 +261,7 @@ button[data-testid="stExpandSidebarButton"]:hover {
     border-radius: 22px;
     padding: 1.3rem 1.5rem .5rem;
     margin-top: 1rem;
+    box-shadow: 0 6px 24px rgba(91,72,48,.10);
 }
 
 .bar-row {
@@ -338,6 +339,62 @@ button[data-testid="stExpandSidebarButton"]:hover {
 [data-testid="stPageLink"] a:hover {
     background: transparent;
 }
+
+
+
+/* GRAFIK CONFIDENCE */
+.st-key-confidence_chart {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    background: #FFFFFF;
+    border: 1px solid #7D1F1F;
+    border-radius: 22px;
+    padding: 1.2rem 1.5rem 1rem;
+    margin-top: 1rem;
+    overflow: hidden;
+    box-shadow: 0 6px 24px rgba(91,72,48,.10);
+}
+
+/* Judul grafik */
+.chart-title {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #3B342C;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+/* Area grafik */
+.st-key-confidence_chart [data-testid="stVegaLiteChart"] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    overflow: hidden;
+}
+
+/* Membatasi ukuran visualisasi vega */
+.st-key-confidence_chart .vega-embed {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Membatasi SVG dan canvas */
+.st-key-confidence_chart svg,
+.st-key-confidence_chart canvas {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
 
 </style>
 """
