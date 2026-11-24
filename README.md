@@ -4,7 +4,7 @@
 
 Aplikasi streamlit ini dikembangkan untuk mengidentifikasi penulis berdasarkan karakteristik visual citra tulisan tangan secara sederhana. Pengguna dapat mengunggah gambar tulisan tangan, kemudian sistem akan memproses gambar dan memprediksi identitas penulis berupa NIM beserta tingkat confidence hasil prediksi. Aplikasi menggunakan model Machine Learning SVM dengan ekstraksi fitur GLCM.
 
-## Anggota Kelompok (Kel 14)
+## Anggota Kelompok A14
 - Charly (535250039)
 - Diandra Febry Wijaya (535250040)
 - Monica Irene (535250041)
