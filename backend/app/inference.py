@@ -3,13 +3,10 @@ from pathlib import Path
 import joblib
 import numpy as np
 
-from app.preprocessing import load_grayscale_image
-from app.features import (
-    extract_glcm_features,
-    build_feature_dataframe
-)
+from app.preprocessing import preprocessing_citra
+from app.features import ekstraksi_glcm, nama_fitur_glcm
 
-# Menentukan lokasi model SVM
+# Menentukan lokasi model SVM final
 MODEL_PATH = (
     Path(__file__).resolve().parent.parent
     / "models"
@@ -17,7 +14,8 @@ MODEL_PATH = (
 )
 
 
-# Memuat model SVM final
+# Memuat model SVM final dan memeriksa kesesuaian konfigurasi
+
 def load_model_bundle() -> dict:
 
     # Memastikan file model tersedia
@@ -33,85 +31,106 @@ def load_model_bundle() -> dict:
     # Memastikan informasi model tersedia
     required_keys = {
         "model",
-        "feature_columns",
-        "classes",
-        "best_params",
-        "glcm_config"
+        "kelas",
+        "feature_names"
     }
 
     if not required_keys.issubset(bundle.keys()):
         raise ValueError("Informasi paket model tidak lengkap.")
 
-    if len(bundle["feature_columns"]) != 24:
-        raise ValueError("Jumlah fitur model harus 24.")
+    model = bundle["model"]
+    kelas = np.asarray(bundle["kelas"]).astype(str)
+    feature_names = list(bundle["feature_names"])
+
+    # Memastikan jumlah kelas dan fitur sesuai model hasil notebook
+    if len(kelas) != 50:
+        raise ValueError("Model harus memiliki 50 kelas penulis.")
+
+    if len(feature_names) != 72:
+        raise ValueError("Model harus menggunakan 72 fitur GLCM.")
+
+    # Memastikan urutan fitur sama dengan proses ekstraksi pada notebook
+    if feature_names != nama_fitur_glcm():
+        raise ValueError("Urutan fitur GLCM tidak sesuai dengan model.")
+
+    # Memastikan urutan indeks kelas sesuai dengan mapping NIM
+    model_classes = np.asarray(model.classes_, dtype=int)
+    expected_classes = np.arange(len(kelas))
+
+    if not np.array_equal(model_classes, expected_classes):
+        raise ValueError("Mapping kelas model tidak sesuai dengan daftar NIM.")
+
+    if getattr(model, "n_features_in_", None) != len(feature_names):
+        raise ValueError("Jumlah fitur input model tidak sesuai.")
+
+    bundle["kelas"] = kelas
+    bundle["feature_names"] = feature_names
 
     return bundle
 
+
 # Melakukan prediksi identitas penulis
+
 def predict_image(image_bytes: bytes, bundle: dict) -> dict:
 
-    # Membaca gambar dalam grayscale
-    gray_image = load_grayscale_image(image_bytes)
+    # Memastikan file gambar tidak kosong
+    if not image_bytes:
+        raise ValueError("File gambar kosong.")
 
-    # Mengekstraksi fitur GLCM
-    features = extract_glcm_features(
-        gray_image,
-        bundle["glcm_config"]
-    )
+    # Menjalankan preprocessing yang sama dengan notebook
+    hasil = preprocessing_citra(image_bytes)
 
-    # Menyusun fitur sesuai urutan model
-    feature_df = build_feature_dataframe(
-        features,
-        bundle["feature_columns"]
-    )
+    # Mengekstraksi 72 fitur GLCM dari area tulisan
+    features = ekstraksi_glcm(hasil["konten"])
 
-    # Memastikan jumlah fitur sesuai
-    if len(features) != 24:
-        raise ValueError("Jumlah fitur GLCM harus 24.")
+    # Memastikan jumlah fitur sesuai model
+    if len(features) != len(bundle["feature_names"]):
+        raise ValueError("Jumlah fitur GLCM tidak sesuai dengan model.")
 
     # Memastikan seluruh nilai fitur valid
-    if not np.isfinite(feature_df.to_numpy()).all():
-        raise ValueError("Nilai fitur tidak valid.")
+    if not np.isfinite(features).all():
+        raise ValueError("Nilai fitur GLCM tidak valid.")
 
+    # Menyiapkan fitur sebagai input model
+    feature_input = features.reshape(1, -1)
     model = bundle["model"]
+    kelas = bundle["kelas"]
 
-    # Memprediksi NIM penulis
-    predicted_nim = model.predict(feature_df)[0]
+    # Memprediksi indeks kelas penulis
+    predicted_index = int(model.predict(feature_input)[0])
 
-    # Mengambil probabilitas setiap kelas
-    confidence_row = model.predict_proba(feature_df)[0]
+    # Mengambil probabilitas seluruh kelas
+    probability_row = model.predict_proba(feature_input)[0]
+    model_classes = np.asarray(model.classes_, dtype=int)
 
-    # Mencari posisi kelas hasil prediksi
-    model_classes = np.asarray(model.classes_)
+    if len(probability_row) != len(model_classes):
+        raise ValueError("Jumlah probabilitas tidak sesuai dengan kelas model.")
 
-    class_indices = np.flatnonzero(
-        model_classes == predicted_nim
-    )
+    if predicted_index < 0 or predicted_index >= len(kelas):
+        raise ValueError("Indeks kelas hasil prediksi tidak valid.")
 
-    if len(class_indices) != 1:
-        raise ValueError("Kelas prediksi tidak ditemukan.")
+    # Menerjemahkan indeks kelas menjadi NIM
+    predicted_nim = str(kelas[predicted_index])
 
-    # Mengambil confidence sesuai kelas predict()
-    class_index = int(class_indices[0])
-    confidence = float(confidence_row[class_index])
+    # Mengambil confidence sesuai kelas hasil prediksi
+    posisi = np.flatnonzero(model_classes == predicted_index)
+
+    if len(posisi) != 1:
+        raise ValueError("Kelas prediksi tidak ditemukan pada model.")
+
+    confidence = float(probability_row[int(posisi[0])])
 
     if not np.isfinite(confidence) or not 0 <= confidence <= 1:
         raise ValueError("Confidence tidak valid.")
 
-    # Probabilitas semua kelas
-    class_confidence_row = dict(
-        sorted(
-            (
-                (str(cls), float(prob))
-                for cls, prob in zip(model_classes, confidence_row)
-            ),
-            key=lambda item: item[1],
-            reverse=True,
-        )
-    )
+    # Menyusun probabilitas seluruh kelas dengan label NIM
+    confidence_row = {
+        str(kelas[int(class_index)]): float(probability)
+        for class_index, probability in zip(model_classes, probability_row)
+    }
 
     return {
-        "predicted_nim": str(predicted_nim),
+        "predicted_nim": predicted_nim,
         "confidence": confidence,
-        "confidence_row": class_confidence_row,
+        "confidence_row": confidence_row
     }

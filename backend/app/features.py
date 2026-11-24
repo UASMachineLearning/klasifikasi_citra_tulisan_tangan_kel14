@@ -1,87 +1,54 @@
+# features.py
+# Ekstraksi 72 fitur GLCM dari area tulisan hasil preprocessing
 import numpy as np
-import pandas as pd
-
 from skimage.feature import graycomatrix, graycoprops
 
-# Mengekstraksi fitur GLCM dari gambar grayscale
-def extract_glcm_features(
-    gray_image: np.ndarray,
-    glcm_config: dict
-) -> dict:
+# Parameter GLCM
+CFG_GLCM = {
+    'levels': 32,
+    'distances': [1, 3, 5],
+    'angles_derajat': [0, 45, 90, 135],
+    'properties': [
+        'dissimilarity', 'correlation', 'homogeneity',
+        'contrast', 'ASM', 'energy'
+    ],
+    'symmetric': True,
+    'normed': True
+}
 
-    # Memastikan gambar berupa grayscale
-    if gray_image is None or gray_image.ndim != 2:
-        raise ValueError("Gambar harus berupa grayscale.")
-
-    if gray_image.dtype != np.uint8:
-        raise ValueError("Tipe data gambar harus uint8.")
-
-    # Mengambil konfigurasi GLCM dari model
-    distances = glcm_config["distances"]
-    angles = glcm_config["angles"]
-    properties = glcm_config["properties"]
-    angle_names = glcm_config["nama_sudut"]
-
-    # Memastikan konfigurasi sesuai penelitian
-    if len(distances) != 1:
-        raise ValueError("Model harus menggunakan satu distance.")
-
-    if len(angles) != len(angle_names):
-        raise ValueError("Jumlah sudut tidak sesuai.")
-
-    # Menghitung matriks GLCM
-    glcm = graycomatrix(
-        gray_image,
-        distances=distances,
-        angles=angles,
-        levels=glcm_config["levels"],
-        symmetric=glcm_config["symmetric"],
-        normed=glcm_config["normed"]
-    )
-
-    features = {}
-
-    # Mengambil nilai setiap properti GLCM
-    for property_name in properties:
-        values = graycoprops(
-            glcm,
-            property_name
-        )
-
-        # Menyimpan nilai berdasarkan sudut
-        for index, angle_name in enumerate(angle_names):
-            feature_name = f"{property_name}_{angle_name}"
-
-            features[feature_name] = float(
-                values[0, index]
-            )
-
-    return features
-
-# Menyusun fitur sesuai urutan model SVM
-def build_feature_dataframe(
-    features: dict,
-    feature_columns: list
-) -> pd.DataFrame:
-
-    # Memastikan jumlah fitur sesuai
-    if len(features) != len(feature_columns):
-        raise ValueError("Jumlah fitur tidak sesuai dengan model.")
-
-    # Memastikan nama fitur sesuai
-    if set(features.keys()) != set(feature_columns):
-        raise ValueError("Nama fitur tidak sesuai dengan model.")
-
-    # Menyusun nilai fitur sesuai urutan training
-    feature_values = [
-        features[column]
-        for column in feature_columns
+# Membuat nama fitur sesuai urutan ekstraksi
+def nama_fitur_glcm():
+    return [
+        f'{prop}_d{jarak}_a{sudut}'
+        for prop in CFG_GLCM['properties']
+        for jarak in CFG_GLCM['distances']
+        for sudut in CFG_GLCM['angles_derajat']
     ]
 
-    # Membentuk DataFrame untuk input model
-    feature_df = pd.DataFrame(
-        [feature_values],
-        columns=feature_columns
+# Mengekstraksi fitur tekstur GLCM dari citra grayscale
+def ekstraksi_glcm(konten):
+    level = CFG_GLCM['levels']
+    abu = np.asarray(konten, dtype=np.uint8)
+
+    if abu.ndim != 2:
+        raise ValueError('Input GLCM harus berupa citra grayscale.')
+    if min(abu.shape) < max(CFG_GLCM['distances']) + 1:
+        abu = np.full((8, 8), 255, dtype=np.uint8)
+
+    kuantisasi = (abu.astype(np.uint16) * level // 256).astype(np.uint8)
+    sudut = np.deg2rad(CFG_GLCM['angles_derajat'])
+
+    glcm = graycomatrix(
+        kuantisasi,
+        distances=CFG_GLCM['distances'],
+        angles=sudut,
+        levels=level,
+        symmetric=CFG_GLCM['symmetric'],
+        normed=CFG_GLCM['normed']
     )
 
-    return feature_df
+    fitur = []
+    for prop in CFG_GLCM['properties']:
+        fitur.extend(graycoprops(glcm, prop).ravel())
+
+    return np.nan_to_num(np.asarray(fitur, dtype=np.float32))

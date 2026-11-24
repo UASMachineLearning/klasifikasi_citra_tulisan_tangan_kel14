@@ -27,9 +27,9 @@ def home():
 # Endpoint untuk memprediksi penulis
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
+
     # Memastikan format file didukung
     allowed_extensions = {".jpg", ".jpeg", ".png"}
-
     file_extension = Path(file.filename or "").suffix.lower()
 
     if file_extension not in allowed_extensions:
@@ -48,7 +48,7 @@ async def predict(file: UploadFile = File(...)):
             model_bundle
         )
 
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         raise HTTPException(
             status_code=400,
             detail=str(error)
@@ -60,6 +60,7 @@ async def predict(file: UploadFile = File(...)):
         "confidence": result["confidence"],
         "confidence_row": result["confidence_row"]
     }
+
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
